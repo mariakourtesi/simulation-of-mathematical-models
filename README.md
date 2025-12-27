@@ -5,17 +5,25 @@ This repository contains code and documentation for simulating various mathemati
 ## Features
 
 - Implementations of common mathematical models
-- Visualizations of simulation results
+- Includes simulation and analysis of the Erlang B formula
+
+## Erlang B Formula
+
+The Erlang B formula is used in telecommunications to calculate the probability of call blocking in a system with a finite number of resources (such as telephone lines or servers).
+
+
+This repository includes code to simulate and visualize the blocking probability using the Erlang B formula.
 
 ## Getting Started
 
 1. Clone the repository:
     ```bash
     git clone https://github.com/your-username/simulation-of-mathematical-models.git
-    cd simulation-of-mathematical-models
+    cd simulation-of-mathematical-models/teletraffic-models/erlang-b
     ```
-2. Install dependencies:
 
 
 ## Usage
-WIP
+
+- Run the Erlang B simulation script `sim_math_erlang_b.py` to compute blocking probabilities for different traffic loads and server counts.
+- More usage instructions coming soon.
