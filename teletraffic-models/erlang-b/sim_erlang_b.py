@@ -1,48 +1,71 @@
 import random
 import math
+import heapq
 
-import random
+from math_erlang_b import recurrentErlangformula
 
-def exp_randomVariable(rate):
-    return random.expovariate(rate)
+   
+arrival_rate = 5 # rate of arrivals per minute
+service_rate = 1 # rate of departures per minute
+capacity = 5
 
-def simulate_erlang_b(C, alpha, mean_service_time, sim_time):
+busy = 0
+blocked_count = 0
 
-    mu = 1.0 / mean_service_time      
-    arrival_rate_lam = alpha * mu                 
+accepted_count = 0
+arrivals_generated = 0
 
-    t = 0.0
-    n_busy = 0
-    departures = []
+num_calls_to_simulate = 1_000_000
+warmup_calls = int(0.10 * num_calls_to_simulate)   # first 5%, discard from stats
 
-    total_arrivals = 0
-    blocked_arrivals = 0
 
-    while t < sim_time:
-        # time to next arrival
-        t_arrival = t + exp_randomVariable(arrival_rate_lam)
+event_list = []
 
-        # next departure time
-        if departures:
-            t_departure = min(departures)
-        else:
-            t_departure = float('inf')
+random.seed(42) 
 
-        if t_arrival < t_departure:
-            # ARRIVAL EVENT
-            t = t_arrival
-            total_arrivals += 1
+# Step 1: first call arrives
+first_arrival_time = -math.log(random.random()) / arrival_rate
+heapq.heappush(event_list, (first_arrival_time, "arrival"))
 
-            if n_busy < C:
-                n_busy += 1
-                service_time = exp_randomVariable(mu)
-                departures.append(t + service_time)
+while event_list:
+    time, event_type = heapq.heappop(event_list)
+
+    print("time", time)
+    print("event_type", event_type)
+
+
+    if event_type == "arrival":
+        arrivals_generated += 1
+        if arrivals_generated > num_calls_to_simulate:
+            break
+
+        # schedule the NEXT arrival regardless of what happens to this one
+        next_arrival_time = time + (-math.log(random.random()) / arrival_rate)
+        heapq.heappush(event_list, (next_arrival_time, "arrival"))
+
+        accepted = busy < capacity
+
+        if accepted:
+            # accept the call
+            busy += 1
+            # accepted_count += 1
+            service_time = -math.log(random.random()) / service_rate
+            departure_time = time + service_time
+            heapq.heappush(event_list, (departure_time, "departure"))
+
+        if arrivals_generated > warmup_calls:   # <- only count post-warm-up
+            if accepted:
+                accepted_count += 1
             else:
-                blocked_arrivals += 1
-        else:
-            # DEPARTURE EVENT
-            t = t_departure
-            n_busy -= 1
-            departures.remove(t_departure)
+                blocked_count += 1
 
-    return blocked_arrivals / total_arrivals
+    elif event_type == "departure":
+        busy -= 1
+
+print("accepted:", accepted_count)
+print("blocked:", blocked_count)
+print("Simulation blocking probability:", blocked_count / (accepted_count + blocked_count))
+
+
+mathematicalModel = recurrentErlangformula(capacity, arrival_rate/service_rate)
+print("analytical model CBP", mathematicalModel)
