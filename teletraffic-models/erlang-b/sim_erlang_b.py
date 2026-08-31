@@ -15,13 +15,13 @@ blocked_count = 0
 accepted_count = 0
 arrivals_generated = 0
 
-num_calls_to_simulate = 1_000_000
-warmup_calls = int(0.10 * num_calls_to_simulate)   # first 5%, discard from stats
+num_calls_to_simulate = 2_000_000
+warmup_calls = int(0.05 * num_calls_to_simulate)   # first 5%, discard from stats
 
 
 event_list = []
 
-random.seed(42) 
+random.seed(58) 
 
 # Step 1: first call arrives
 first_arrival_time = -math.log(random.random()) / arrival_rate
@@ -64,8 +64,8 @@ while event_list:
 
 print("accepted:", accepted_count)
 print("blocked:", blocked_count)
-print("Simulation blocking probability:", blocked_count / (accepted_count + blocked_count))
+print("Simulation blocking probability:", f"{(blocked_count / (accepted_count + blocked_count)):.7f}")
 
 
 mathematicalModel = recurrentErlangformula(capacity, arrival_rate/service_rate)
-print("analytical model CBP", mathematicalModel)
+print("analytical model CBP", f"{mathematicalModel:.7f}")
