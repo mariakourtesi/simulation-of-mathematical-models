@@ -1,10 +1,6 @@
 # Erlang-B Loss System Simulation
 
-A discrete-event simulation (DES) of an Erlang-B (M/M/C/C) loss system, validated
-against the analytical Erlang-B formula. It reports the time-based state
-distribution q(j), the utilization, and demonstrates the PASTA property (call
-blocking equals q(C)), together with a confidence interval computed across
-several random seeds.
+A discrete-event simulation (DES) of an Erlang-B (M/M/C/C) loss system,
 
 The project uses only the Python standard library, so there is nothing to
 install.
