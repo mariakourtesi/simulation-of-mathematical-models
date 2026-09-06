@@ -1,71 +1,97 @@
+"""
+Erlang-B loss system: discrete-event simulation validated against the
+analytical model, demonstrating the PASTA property (call blocking == q(C)).
+"""
+
 import random
-import math
+
+
 import heapq
 
-from math_erlang_b import recurrentErlangformula
-
-   
-arrival_rate = 5 # rate of arrivals per minute
-service_rate = 1 # rate of departures per minute
-capacity = 5
-
-busy = 0
-blocked_count = 0
-
-accepted_count = 0
-arrivals_generated = 0
-
-num_calls_to_simulate = 2_000_000
-warmup_calls = int(0.05 * num_calls_to_simulate)   # first 5%, discard from stats
+from dataclasses import dataclass
+from utils.exponential_interarrivals import exponential_interarrivals
 
 
-event_list = []
+# --------------------------------------------------------------------------
+# Simulation
+# --------------------------------------------------------------------------
 
-random.seed(58) 
-
-# Step 1: first call arrives
-first_arrival_time = -math.log(random.random()) / arrival_rate
-heapq.heappush(event_list, (first_arrival_time, "arrival"))
-
-while event_list:
-    time, event_type = heapq.heappop(event_list)
-
-    print("time", time)
-    print("event_type", event_type)
+@dataclass
+class RunResult:
+    """Results of a single simulation run."""
+    q: list            # simulated fraction of time in each state 0..capacity
+    call_blocking: float
+    utilization: float
 
 
-    if event_type == "arrival":
-        arrivals_generated += 1
-        if arrivals_generated > num_calls_to_simulate:
-            break
 
-        # schedule the NEXT arrival regardless of what happens to this one
-        next_arrival_time = time + (-math.log(random.random()) / arrival_rate)
-        heapq.heappush(event_list, (next_arrival_time, "arrival"))
+def run_simulation(seed, arrival_rate, service_rate, capacity,
+                   num_calls_to_simulate, warmup_fraction=0.05):
+    """
+    One Erlang-B discrete-event simulation run.
 
-        accepted = busy < capacity
+    The first warmup_fraction of calls advance the system state but are
+    excluded from all statistics; the loop runs extra arrivals up front so
+    that exactly num_calls_to_simulate results are counted.
+    """
+    busy_servers = 0
+    blocked_count = 0
+    accepted_count = 0
+    arrivals_generated = 0
 
-        if accepted:
-            # accept the call
-            busy += 1
-            # accepted_count += 1
-            service_time = -math.log(random.random()) / service_rate
-            departure_time = time + service_time
-            heapq.heappush(event_list, (departure_time, "departure"))
+    warmup_calls = int(warmup_fraction * num_calls_to_simulate)
+    total_arrivals_needed = num_calls_to_simulate + warmup_calls
 
-        if arrivals_generated > warmup_calls:   # <- only count post-warm-up
+    time_in_state = [0.0] * (capacity + 1)
+    last_event_time = 0.0
+
+    event_list = []
+    random.seed(seed)
+    heapq.heappush(event_list, (exponential_interarrivals(arrival_rate), "arrival"))
+
+    while event_list:
+        now, event_type = heapq.heappop(event_list)
+
+        # credit the elapsed interval to whichever state we were in (post warm-up)
+        if arrivals_generated > warmup_calls:
+            time_in_state[busy_servers] += (now - last_event_time)
+        last_event_time = now
+
+        if event_type == "arrival":
+            arrivals_generated += 1
+            if arrivals_generated > total_arrivals_needed:
+                break
+
+            heapq.heappush(event_list,
+                           (now + exponential_interarrivals(arrival_rate), "arrival"))
+
+            accepted = busy_servers < capacity
             if accepted:
-                accepted_count += 1
-            else:
-                blocked_count += 1
+                busy_servers += 1
+                heapq.heappush(event_list,
+                               (now + exponential_interarrivals(service_rate), "departure"))
 
-    elif event_type == "departure":
-        busy -= 1
+            if arrivals_generated > warmup_calls:
+                if accepted:
+                    accepted_count += 1
+                else:
+                    blocked_count += 1
 
-print("accepted:", accepted_count)
-print("blocked:", blocked_count)
-print("Simulation blocking probability:", f"{(blocked_count / (accepted_count + blocked_count)):.7f}")
+        elif event_type == "departure":
+            busy_servers -= 1
+
+    counted = accepted_count + blocked_count
+    if counted == 0:
+        raise ValueError("No calls were counted; check warm-up vs total settings.")
+
+    total_time = sum(time_in_state)
+    # calculate fractions: what proportion of the total time was spent in each state
+    q = [ts / total_time for ts in time_in_state] # divide each state's time by the total time
+    call_blocking = blocked_count / counted
+    avg_busy = sum(j * q[j] for j in range(capacity + 1)) # average of busy servers in each state
+    utilization = avg_busy / capacity
+    return RunResult(q=q, call_blocking=call_blocking, utilization=utilization)
 
 
-mathematicalModel = recurrentErlangformula(capacity, arrival_rate/service_rate)
-print("analytical model CBP", f"{mathematicalModel:.7f}")
+
+
