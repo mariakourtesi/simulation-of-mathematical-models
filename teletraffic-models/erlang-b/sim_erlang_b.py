@@ -42,7 +42,8 @@ def run_simulation(seed, arrival_rate, service_rate, capacity,
     warmup_calls = int(warmup_fraction * num_calls_to_simulate)
     total_arrivals_needed = num_calls_to_simulate + warmup_calls
 
-    time_in_state = [0.0] * (capacity + 1)
+    # How much time the system spends in each state: initialise it based on the states it will have
+    time_in_state = [0.0] * (capacity + 1) # [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     last_event_time = 0.0
 
     event_list = []
@@ -56,6 +57,7 @@ def run_simulation(seed, arrival_rate, service_rate, capacity,
         if arrivals_generated > warmup_calls:
             time_in_state[busy_servers] += (now - last_event_time)
         last_event_time = now
+    
 
         if event_type == "arrival":
             arrivals_generated += 1
@@ -85,8 +87,9 @@ def run_simulation(seed, arrival_rate, service_rate, capacity,
         raise ValueError("No calls were counted; check warm-up vs total settings.")
 
     total_time = sum(time_in_state)
-    # calculate fractions: what proportion of the total time was spent in each state
+    # normalise: what proportion of the total time was spent in each state
     q = [ts / total_time for ts in time_in_state] # divide each state's time by the total time
+
     call_blocking = blocked_count / counted
     avg_busy = sum(j * q[j] for j in range(capacity + 1)) # average of busy servers in each state
     utilization = avg_busy / capacity
