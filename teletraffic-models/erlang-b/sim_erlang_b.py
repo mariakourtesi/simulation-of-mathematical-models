@@ -7,7 +7,6 @@ import random
 import heapq
 
 from dataclasses import dataclass
-from utils.exponential_interarrivals import exponential_interarrivals
 
 
 # --------------------------------------------------------------------------
@@ -41,8 +40,6 @@ def run_simulation(seed, arrival_rate, service_rate, capacity,
 
     time_in_state = [0.0] * (capacity + 1)
     last_event_time = 0.0
-
-    random.seed(seed)
 
     # Local bindings: global/attribute lookups are slower than local variable
     # lookups in CPython, and this loop runs tens of millions of times.

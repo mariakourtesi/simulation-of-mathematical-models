@@ -38,7 +38,7 @@ def report(results, arrival_rate, service_rate, capacity):
     print(rule(lw, rw))
     print(row("call blocking (fraction of arrivals)", f"{results['blocking_mean']:.7f}", lw, rw))
     print(row(f"q({capacity}) (fraction of time system full)", f"{q_mean[capacity]:.7f}", lw, rw))
-    print(row(f"analytical Erlang-B B({capacity},{offered_load:.0f})", f"{analytical_blocking:.7f}", lw, rw))
+    print(row(f"analytical Erlang-B B({capacity},{offered_load:g})", f"{analytical_blocking:.7f}", lw, rw))
     print(rule(lw, rw))
     print()
 

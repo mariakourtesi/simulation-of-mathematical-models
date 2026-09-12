@@ -1,9 +1,9 @@
 def recurrentErlangformula(capacity, trafficLoad):
-  if (capacity == 0):
-    return 1.0
+  """
+  Recurrent Erlang-B formula: B(0) = 1, B(c) = (A * B(c-1)) / (c + A * B(c-1)).
 
-  return (
-    (trafficLoad * recurrentErlangformula(capacity - 1, trafficLoad)) /
-    (capacity + trafficLoad * recurrentErlangformula(capacity - 1, trafficLoad))
-  )
-
+  """
+  B = 1.0
+  for c in range(1, capacity + 1):
+    B = (trafficLoad * B) / (c + trafficLoad * B)
+  return B
