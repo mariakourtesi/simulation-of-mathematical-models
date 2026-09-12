@@ -4,8 +4,6 @@ analytical model, demonstrating the PASTA property (call blocking == q(C)).
 """
 
 import random
-
-
 import heapq
 
 from dataclasses import dataclass
@@ -22,7 +20,6 @@ class RunResult:
     q: list            # simulated fraction of time in each state 0..capacity
     call_blocking: float
     utilization: float
-
 
 
 def run_simulation(seed, arrival_rate, service_rate, capacity,
@@ -42,38 +39,48 @@ def run_simulation(seed, arrival_rate, service_rate, capacity,
     warmup_calls = int(warmup_fraction * num_calls_to_simulate)
     total_arrivals_needed = num_calls_to_simulate + warmup_calls
 
-    # How much time the system spends in each state: initialise it based on the states it will have
-    time_in_state = [0.0] * (capacity + 1) # [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    time_in_state = [0.0] * (capacity + 1)
     last_event_time = 0.0
 
-    event_list = []
     random.seed(seed)
-    heapq.heappush(event_list, (exponential_interarrivals(arrival_rate), "arrival"))
+
+    # Local bindings: global/attribute lookups are slower than local variable
+    # lookups in CPython, and this loop runs tens of millions of times.
+    rng = random.Random(seed)
+    expo = rng.expovariate
+    heappush = heapq.heappush
+    heappop = heapq.heappop
+
+    event_list = []
+    heappush(event_list, (expo(arrival_rate), "arrival"))
+
+    # arrivals_generated only increases, so once we're past warmup we stay
+    # past warmup - track that with a flag instead of re-comparing every event.
+    warmed_up = warmup_calls == 0
 
     while event_list:
-        now, event_type = heapq.heappop(event_list)
+        now, event_type = heappop(event_list)
 
-        # credit the elapsed interval to whichever state we were in (post warm-up)
-        if arrivals_generated > warmup_calls:
+        if warmed_up:
             time_in_state[busy_servers] += (now - last_event_time)
         last_event_time = now
-    
 
         if event_type == "arrival":
             arrivals_generated += 1
             if arrivals_generated > total_arrivals_needed:
                 break
 
-            heapq.heappush(event_list,
-                           (now + exponential_interarrivals(arrival_rate), "arrival"))
+            heappush(event_list, (now + expo(arrival_rate), "arrival"))
 
             accepted = busy_servers < capacity
             if accepted:
                 busy_servers += 1
-                heapq.heappush(event_list,
-                               (now + exponential_interarrivals(service_rate), "departure"))
+                heappush(event_list, (now + expo(service_rate), "departure"))
 
-            if arrivals_generated > warmup_calls:
+            if not warmed_up and arrivals_generated > warmup_calls:
+                warmed_up = True
+
+            if warmed_up:
                 if accepted:
                     accepted_count += 1
                 else:
@@ -87,14 +94,9 @@ def run_simulation(seed, arrival_rate, service_rate, capacity,
         raise ValueError("No calls were counted; check warm-up vs total settings.")
 
     total_time = sum(time_in_state)
-    # normalise: what proportion of the total time was spent in each state
-    q = [ts / total_time for ts in time_in_state] # divide each state's time by the total time
+    q = [ts / total_time for ts in time_in_state]
 
     call_blocking = blocked_count / counted
-    avg_busy = sum(j * q[j] for j in range(capacity + 1)) # average of busy servers in each state
+    avg_busy = sum(j * q[j] for j in range(capacity + 1))
     utilization = avg_busy / capacity
     return RunResult(q=q, call_blocking=call_blocking, utilization=utilization)
-
-
-
-

@@ -8,7 +8,7 @@ if __name__ == "__main__":
     parser.add_argument("--arrival-rate", type=float, default=5)
     parser.add_argument("--service-rate", type=float, default=1)
     parser.add_argument("--capacity", type=int, default=5)
-    parser.add_argument("--calls", type=int, default=10_000_000)
+    parser.add_argument("--calls", type=int)
     parser.add_argument("--seeds", type=int, nargs="+", default=[42,50,58,59,57,38,39,68,28,80])
     parser.add_argument("--quiet", action="store_true")
 
